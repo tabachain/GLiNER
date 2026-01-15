@@ -10,6 +10,7 @@ from transformers.modeling_outputs import BaseModelOutput
 from ..utils import MissedPackageException, is_module_available
 from .layers import LayersFuser
 from ..infer_packing import InferencePackingConfig, unpack_spans, pack_requests
+from .backbones.liquid_mamba import BidirectionalLiquidMamba2
 
 # Check for optional dependencies
 IS_LLM2VEC = is_module_available("llm2vec")
@@ -88,7 +89,7 @@ class Transformer(nn.Module):
         else:
             encoder_config = config.encoder_config
         if encoder_config is None:
-            encoder_config = AutoConfig.from_pretrained(model_name, cache_dir=cache_dir)
+            encoder_config = AutoConfig.from_pretrained(model_name, cache_dir=cache_dir, trust_remote_code=True)
             if config.vocab_size != -1:
                 encoder_config.vocab_size = config.vocab_size
 
@@ -114,6 +115,9 @@ class Transformer(nn.Module):
         elif config_name in {"DebertaV2Config"}:
             custom = True
             ModelClass = DebertaV2Model
+        elif "liquid-mamba2-hybrid" in model_name or (hasattr(encoder_config, "model_type") and encoder_config.model_type == "liquid_mamba2_hybrid"):
+            custom = True
+            ModelClass = BidirectionalLiquidMamba2
         else:
             custom = False
             ModelClass = AutoModel
