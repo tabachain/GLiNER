@@ -4,7 +4,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
-from transformers import AutoModel, AutoConfig
+from transformers import AutoModel, AutoConfig, PretrainedConfig
 from transformers.modeling_outputs import BaseModelOutput
 
 from ..utils import MissedPackageException, is_module_available
@@ -89,7 +89,13 @@ class Transformer(nn.Module):
         else:
             encoder_config = config.encoder_config
         if encoder_config is None:
-            encoder_config = AutoConfig.from_pretrained(model_name, cache_dir=cache_dir, trust_remote_code=True)
+            try:
+                encoder_config = AutoConfig.from_pretrained(model_name, cache_dir=cache_dir, trust_remote_code=True)
+            except (ValueError, KeyError) as e:
+                if "liquid-mamba2-hybrid" in model_name or "liquid_mamba2_hybrid" in str(e):
+                    encoder_config = PretrainedConfig.from_pretrained(model_name, cache_dir=cache_dir)
+                else:
+                    raise e
             if config.vocab_size != -1:
                 encoder_config.vocab_size = config.vocab_size
 
